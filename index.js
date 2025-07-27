@@ -7,7 +7,7 @@ const fs = require('fs');
 const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch');
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt'); // bcrypt is no longer needed
 
 // --- Basic Setup ---
 const app = express();
@@ -18,11 +18,11 @@ const uploadFolder = path.join(__dirname, 'uploads');
 const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
-// --- SECURE HASHED PASSWORDS ---
+// --- PLAIN TEXT PASSWORDS (Insecure) ---
 const USERS = {
-  winter: 'g', // Plaintext: 'g'
-  enzo:   'balls', // Plaintext: 'balls'
-  josh:   'polish'  // Plaintext: 'polish'
+  winter: 'g',
+  enzo:   'balls',
+  josh:   'polish'
 };
 
 
@@ -121,7 +121,7 @@ app.get('/login', (req, res) => {
       <h2>Login</h2>
       ${error}
       <form method="post" action="/login">
-        <input name="username" placeholder="Username" required>
+        <input name="username" type="text" placeholder="Username" required>
         <input name="password" type="password" placeholder="Password" required>
         <button type="submit">Login</button>
       </form>
@@ -130,11 +130,13 @@ app.get('/login', (req, res) => {
   res.send(renderPage('Login', body));
 });
 
-app.post('/login', async (req, res) => {
+// --- LOGIN LOGIC UPDATED FOR PLAIN TEXT ---
+app.post('/login', (req, res) => { // No longer needs to be async
   const { username, password } = req.body;
-  const storedHash = USERS[username];
+  const storedPassword = USERS[username];
 
-  if (storedHash && await bcrypt.compare(password, storedHash)) {
+  // Simple string comparison instead of bcrypt.compare
+  if (storedPassword && password === storedPassword) {
     req.session.loggedIn = true;
     req.session.username = username;
     sendToDiscord(`✅ **${username}** just logged in.`);
@@ -166,7 +168,6 @@ app.get('/', (req, res) => {
   res.send(renderPage('File Uploader', body));
 });
 
-// --- THIS IS THE UPDATED SECTION ---
 app.post('/upload', upload.single('file'), (req, res) => {
   if (!req.session.loggedIn) return res.redirect('/login');
   if (!req.file) return res.status(400).send('No file uploaded.');
@@ -181,27 +182,31 @@ app.post('/upload', upload.single('file'), (req, res) => {
         <a href="${fileUrl}" target="_blank">${fileUrl}</a>
       </p>
       
-      <!-- 1. The button is added here -->
       <button id="copy-btn" onclick="copyToClipboard('${fileUrl}')">Copy Link</button>
       
       <br><br>
       <a href="/">Upload another</a>
     </div>
 
-    <!-- 2. The script is added here -->
     <script>
       function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-          // Change button text for user feedback instead of an alert
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand('copy');
           const copyBtn = document.getElementById('copy-btn');
           const originalText = copyBtn.innerText;
           copyBtn.innerText = 'Copied!';
           setTimeout(() => {
             copyBtn.innerText = originalText;
-          }, 2000); // Change back after 2 seconds
-        }).catch(err => {
-          console.error('Failed to copy: ', err);
-        });
+          }, 2000);
+        } catch (err) {
+          console.error('Fallback: Oops, unable to copy', err);
+        }
+        document.body.removeChild(textArea);
       }
     </script>
   `;
