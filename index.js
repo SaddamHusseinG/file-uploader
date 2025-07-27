@@ -26,7 +26,7 @@ const upload = multer({ storage });
 
 // Upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {
-    const downloadLink = `${req.protocol}://${req.hostname}:${PORT}/file/${req.file.filename}`;
+    const downloadLink = `${req.protocol}://${req.get('host')}/file/${req.file.filename}`;
     res.send(`✅ File uploaded!<br><a href="${downloadLink}">${downloadLink}</a>`);
 });
 
