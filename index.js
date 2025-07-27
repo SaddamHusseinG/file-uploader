@@ -222,19 +222,23 @@ app.post('/upload', upload.single('file'), (req, res) => {
     </div>
   `;
   
-  const copyScript = `
+  // --- THIS IS THE NEW, WORKING SCRIPT ---
+const copyScript = `
     <script>
       function copyToClipboard(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        
-        const btn = document.getElementById('copy-btn');
-        btn.innerText = 'Copied!';
-        setTimeout(() => { btn.innerText = 'Copy Link'; }, 2000);
+        navigator.clipboard.writeText(text).then(() => {
+          // Success!
+          const btn = document.getElementById('copy-btn');
+          const originalText = btn.innerText;
+          btn.innerText = 'Copied!';
+          setTimeout(() => {
+            btn.innerText = originalText;
+          }, 2000);
+        }).catch(err => {
+          // Error
+          console.error('Failed to copy: ', err);
+          alert('Could not copy link to clipboard.');
+        });
       }
     </script>
   `;
