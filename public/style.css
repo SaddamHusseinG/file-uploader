@@ -40,6 +40,7 @@ body {
   width: 100%;
   max-width: 400px;
   text-align: center;
+  z-index: 1; /* Ensure card is above the background */
 }
 
 h2 {
@@ -62,10 +63,7 @@ input[type="file"] {
   background-color: var(--background-color);
   color: var(--text-color);
   font-size: 1rem;
-}
-
-input::placeholder {
-  color: #888;
+  box-sizing: border-box; /* Ensures padding doesn't affect width */
 }
 
 button {
@@ -111,4 +109,20 @@ a:hover {
 
 .user-info b {
   color: var(--accent-color);
+}
+
+/* --- FIX FOR BROWSER AUTOFILL STYLES --- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px var(--background-color) inset !important;
+    -webkit-text-fill-color: var(--text-color) !important;
+    font-family: 'Poppins', sans-serif; /* Ensures font matches */
+}
+
+/* --- FIX FOR PLACEHOLDER TEXT VISIBILITY --- */
+input::placeholder {
+  color: #a9a9a9;
+  opacity: 1; /* Ensure placeholder is not transparent */
 }
