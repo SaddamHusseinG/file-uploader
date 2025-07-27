@@ -1,5 +1,5 @@
 // index.js
-require('dotenv').config(); // Load secrets from .env file
+require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -7,7 +7,6 @@ const fs = require('fs');
 const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
 const fetch = require('node-fetch');
-// const bcrypt = require('bcrypt'); // bcrypt is no longer needed
 
 // --- Basic Setup ---
 const app = express();
@@ -25,11 +24,8 @@ const USERS = {
   josh:   'polish'
 };
 
-
-// Ensure uploads folder exists
 if (!fs.existsSync(uploadFolder)) fs.mkdirSync(uploadFolder);
 
-// Multer config
 const storage = multer.diskStorage({
   destination: uploadFolder,
   filename: (req, file, cb) => cb(null, uuidv4() + path.extname(file.originalname))
@@ -44,9 +40,8 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set to true if you are using HTTPS
+  cookie: { secure: false }
 }));
-
 
 // --- Helper Functions ---
 const sendToDiscord = async (message) => {
@@ -62,7 +57,7 @@ const sendToDiscord = async (message) => {
   }
 };
 
-const renderPage = (title, bodyContent) => `
+const renderPage = (title, bodyContent, extraScript = '') => `
   <html>
     <head>
       <title>${title}</title>
@@ -74,44 +69,13 @@ const renderPage = (title, bodyContent) => `
       <script src="https://cdn.jsdelivr.net/npm/tsparticles@2.9.3/tsparticles.bundle.min.js"></script>
       <script>
         tsParticles.load("tsparticles", {
-          fpsLimit: 60,
-          particles: {
-            number: { value: 80, density: { enable: true, value_area: 800 } },
-            color: { value: "#9b59b6" },
-            shape: { type: "circle" },
-            opacity: { value: 0.5, random: true },
-            size: { value: 3, random: { enable: true, minimumValue: 1 } },
-            move: {
-              enable: true,
-              speed: 1,
-              direction: "none",
-              out_mode: "out"
-            },
-            line_linked: {
-              enable: true,
-              distance: 150,
-              color: "#8e44ad",
-              opacity: 0.4,
-              width: 1
-            }
-          },
-          interactivity: {
-            events: {
-              onhover: { enable: true, mode: "grab" },
-              onclick: { enable: true, mode: "push" }
-            },
-            modes: {
-              grab: { distance: 140, line_opacity: 1 },
-              push: { particles_nb: 4 }
-            }
-          },
-          retina_detect: true
+          fpsLimit: 60, particles: { number: { value: 80, density: { enable: true, value_area: 800 } }, color: { value: "#9b59b6" }, shape: { type: "circle" }, opacity: { value: 0.5, random: true }, size: { value: 3, random: { enable: true, minimumValue: 1 } }, move: { enable: true, speed: 1, direction: "none", out_mode: "out" }, line_linked: { enable: true, distance: 150, color: "#8e44ad", opacity: 0.4, width: 1 } }, interactivity: { events: { onhover: { enable: true, mode: "grab" }, onclick: { enable: true, mode: "push" } }, modes: { grab: { distance: 140, line_opacity: 1 }, push: { particles_nb: 4 } } }, retina_detect: true
         });
       </script>
+      ${extraScript}
     </body>
   </html>
 `;
-
 
 // --- Routes ---
 app.get('/login', (req, res) => {
@@ -130,12 +94,9 @@ app.get('/login', (req, res) => {
   res.send(renderPage('Login', body));
 });
 
-// --- LOGIN LOGIC UPDATED FOR PLAIN TEXT ---
-app.post('/login', (req, res) => { // No longer needs to be async
+app.post('/login', (req, res) => {
   const { username, password } = req.body;
   const storedPassword = USERS[username];
-
-  // Simple string comparison instead of bcrypt.compare
   if (storedPassword && password === storedPassword) {
     req.session.loggedIn = true;
     req.session.username = username;
@@ -159,17 +120,91 @@ app.get('/', (req, res) => {
     <div class="card">
       <h2>Upload a File</h2>
       <p class="user-info">Logged in as <b>${req.session.username}</b> | <a href="/logout">Logout</a></p>
-      <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" required />
-        <button type="submit">Upload</button>
+      
+      <form id="upload-form">
+        <div class="file-input-wrapper">
+          <input type="file" name="file" id="file-input" class="file-input-hidden" required />
+          <label for="file-input" class="file-input-label">Choose a File</label>
+          <span class="file-name">No file chosen</span>
+        </div>
+        <button type="submit" id="upload-btn">Upload</button>
       </form>
+
+      <div class="progress-container">
+        <div class="progress-bar"></div>
+        <div class="progress-text">0%</div>
+      </div>
     </div>
   `;
-  res.send(renderPage('File Uploader', body));
+
+  const uploadScript = `
+    <script>
+      const form = document.getElementById('upload-form');
+      const fileInput = document.getElementById('file-input');
+      const uploadBtn = document.getElementById('upload-btn');
+      const fileNameSpan = document.querySelector('.file-name');
+      const progressContainer = document.querySelector('.progress-container');
+      const progressBar = document.querySelector('.progress-bar');
+      const progressText = document.querySelector('.progress-text');
+
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+          fileNameSpan.textContent = fileInput.files[0].name;
+        } else {
+          fileNameSpan.textContent = 'No file chosen';
+        }
+      });
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        progressContainer.style.display = 'block';
+        uploadBtn.disabled = true;
+        uploadBtn.innerText = 'Uploading...';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+
+        xhr.upload.onprogress = function(event) {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = percentComplete + '%';
+            progressText.textContent = percentComplete + '%';
+          }
+        };
+
+        xhr.onload = function() {
+          if (xhr.status === 200) {
+            document.documentElement.innerHTML = xhr.responseText;
+          } else {
+            alert('Upload failed. Please try again.');
+            uploadBtn.disabled = false;
+            uploadBtn.innerText = 'Upload';
+            progressContainer.style.display = 'none';
+          }
+        };
+        
+        xhr.onerror = function() {
+            alert('An error occurred during the upload. Please try again.');
+            uploadBtn.disabled = false;
+            uploadBtn.innerText = 'Upload';
+            progressContainer.style.display = 'none';
+        };
+
+        xhr.send(formData);
+      });
+    </script>
+  `;
+  res.send(renderPage('File Uploader', body, uploadScript));
 });
 
 app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.session.loggedIn) return res.redirect('/login');
+  if (!req.session.loggedIn) return res.status(401).send('Not authorized');
   if (!req.file) return res.status(400).send('No file uploaded.');
 
   const fileUrl = `${req.protocol}://${req.get('host')}/file/${req.file.filename}`;
@@ -181,38 +216,31 @@ app.post('/upload', upload.single('file'), (req, res) => {
       <p style="word-break: break-all;">
         <a href="${fileUrl}" target="_blank">${fileUrl}</a>
       </p>
-      
       <button id="copy-btn" onclick="copyToClipboard('${fileUrl}')">Copy Link</button>
-      
       <br><br>
       <a href="/">Upload another</a>
     </div>
-
+  `;
+  
+  const copyScript = `
     <script>
       function copyToClipboard(text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-          const copyBtn = document.getElementById('copy-btn');
-          const originalText = copyBtn.innerText;
-          copyBtn.innerText = 'Copied!';
-          setTimeout(() => {
-            copyBtn.innerText = originalText;
-          }, 2000);
-        } catch (err) {
-          console.error('Fallback: Oops, unable to copy', err);
-        }
-        document.body.removeChild(textArea);
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        
+        const btn = document.getElementById('copy-btn');
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = 'Copy Link'; }, 2000);
       }
     </script>
   `;
-  res.send(renderPage('Uploaded', body));
-});
 
+  res.send(renderPage('Uploaded', body, copyScript));
+});
 
 // --- Start Server ---
 app.listen(PORT, () => {
