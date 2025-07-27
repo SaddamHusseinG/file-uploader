@@ -156,7 +156,7 @@ app.get('/', (req, res) => {
   const body = `
     <div class="card">
       <h2>Upload a File</h2>
-      <p>Logged in as <b>${req.session.username}</b> | <a href="/logout">Logout</a></p>
+      <p class="user-info">Logged in as <b>${req.session.username}</b> | <a href="/logout">Logout</a></p>
       <form action="/upload" method="post" enctype="multipart/form-data">
         <input type="file" name="file" required />
         <button type="submit">Upload</button>

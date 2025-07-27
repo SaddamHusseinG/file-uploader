@@ -98,3 +98,17 @@ a:hover {
   color: #e74c3c;
   margin-bottom: 1rem;
 }
+
+.user-info {
+  font-size: 0.9rem;
+  color: #c0c0c0; /* A slightly lighter grey */
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid #444;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.user-info b {
+  color: var(--accent-color);
+}
