@@ -1,5 +1,3 @@
-// index.js
-require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -11,18 +9,18 @@ const fetch = require('node-fetch');
 // --- Basic Setup ---
 const app = express();
 const PORT = process.env.PORT || 6501;
-const uploadFolder = path.join(__dirname, 'uploads');
+const uploadFolder = path.join(__dirname, 'Uploads');
 
-// --- Secrets from .env file ---
-const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK;
-const SESSION_SECRET = process.env.SESSION_SECRET;
+// --- Secrets ---
+const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1397901124589191329/jXG5RP9h0Q-Df96yNdVgfP1i4z7IOXHnEdBRYSPlcJpcVs3EED1LrCPaVwOtPD6BvuKt'; // Replace with your actual Discord webhook URL
+const SESSION_SECRET = 'a83hfNdkd932kdnDjskal29sjd92kdnDk29'; // Replace with a secure session secret
 
 // --- PLAIN TEXT PASSWORDS (Insecure) ---
 const USERS = {
   winter: 'g',
   enzo:   'balls',
   josh:   'polish',
-  anthony 'bald'
+  anthony: 'bald'
 };
 
 if (!fs.existsSync(uploadFolder)) fs.mkdirSync(uploadFolder);
@@ -223,12 +221,10 @@ app.post('/upload', upload.single('file'), (req, res) => {
     </div>
   `;
   
-  // --- THIS IS THE NEW, WORKING SCRIPT ---
-const copyScript = `
+  const copyScript = `
     <script>
       function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(() => {
-          // Success!
           const btn = document.getElementById('copy-btn');
           const originalText = btn.innerText;
           btn.innerText = 'Copied!';
@@ -236,7 +232,6 @@ const copyScript = `
             btn.innerText = originalText;
           }, 2000);
         }).catch(err => {
-          // Error
           console.error('Failed to copy: ', err);
           alert('Could not copy link to clipboard.');
         });
