@@ -224,68 +224,69 @@ app.post('/upload', upload.single('file'), (req, res) => {
       <p style="word-break: break-all;">
         <a href="${fileUrl}" target="_blank">${fileUrl}</a>
       </p>
-      <button id="copy-btn" onclick="copyToClipboard('${fileUrl}')">Copy Link</button>
+      <button id="copy-btn">Copy Link</button>
       <br><br>
       <a href="/">Upload another</a>
-    </div>
-  `;
-  
-  const copyScript = `
-    <script>
-      function copyToClipboard(text) {
-        console.log('Copy button clicked, attempting to copy:', text);
-        // Try modern clipboard API first
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(() => {
-            console.log('Clipboard API: Copy successful');
+      <script>
+        function copyToClipboard(text) {
+          console.log('Copy button clicked, attempting to copy:', text);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+              console.log('Clipboard API: Copy successful');
+              const btn = document.getElementById('copy-btn');
+              btn.classList.add('copied');
+              btn.innerText = 'Copied!';
+              setTimeout(() => {
+                btn.classList.remove('copied');
+                btn.innerText = 'Copy Link';
+              }, 2000);
+            }).catch(err => {
+              console.error('Clipboard API failed:', err);
+              fallbackCopyToClipboard(text);
+            });
+          } else {
+            console.log('Clipboard API not available, using fallback');
+            fallbackCopyToClipboard(text);
+          }
+        }
+
+        function fallbackCopyToClipboard(text) {
+          try {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            console.log('Fallback copy:', successful ? 'successful' : 'failed');
             const btn = document.getElementById('copy-btn');
-            btn.classList.add('copied');
-            btn.innerText = 'Copied!';
+            btn.classList.add(successful ? 'copied' : 'copy-failed');
+            btn.innerText = successful ? 'Copied!' : 'Copy Failed';
             setTimeout(() => {
-              btn.classList.remove('copied');
+              btn.classList.remove('copied', 'copy-failed');
               btn.innerText = 'Copy Link';
             }, 2000);
-          }).catch(err => {
-            console.error('Clipboard API failed:', err);
-            fallbackCopyToClipboard(text);
-          });
-        } else {
-          console.log('Clipboard API not available, using fallback');
-          fallbackCopyToClipboard(text);
-        }
-      }
-
-      function fallbackCopyToClipboard(text) {
-        try {
-          const textArea = document.createElement('textarea');
-          textArea.value = text;
-          textArea.style.position = 'fixed';
-          textArea.style.opacity = '0';
-          document.body.appendChild(textArea);
-          textArea.focus();
-          textArea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textArea);
-          console.log('Fallback copy:', successful ? 'successful' : 'failed');
-          const btn = document.getElementById('copy-btn');
-          btn.classList.add(successful ? 'copied' : 'copy-failed');
-          btn.innerText = successful ? 'Copied!' : 'Copy Failed';
-          setTimeout(() => {
-            btn.classList.remove('copied', 'copy-failed');
-            btn.innerText = 'Copy Link';
-          }, 2000);
-          if (!successful) {
-            throw new Error('execCommand copy failed');
+            if (!successful) {
+              throw new Error('execCommand copy failed');
+            }
+          } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('Could not copy link to clipboard. Please copy it manually.');
           }
-        } catch (err) {
-          console.error('Fallback copy failed:', err);
-          alert('Could not copy link to clipboard. Please copy it manually.');
         }
-      }
-    </script>
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+          console.log('Copy button event listener triggered');
+          copyToClipboard('${fileUrl}');
+        });
+      </script>
+    </div>
   `;
 
-  res.send(renderPage('Uploaded', body, copyScript));
+  res.send(renderPage('Uploaded', body));
 });
 
 // --- Start Server ---
