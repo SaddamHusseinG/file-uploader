@@ -21,7 +21,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 const USERS = {
   winter: 'g',
   enzo:   'balls',
-  josh:   'polish'
+  josh:   'polish',
+  anthony 'bald'
 };
 
 if (!fs.existsSync(uploadFolder)) fs.mkdirSync(uploadFolder);
