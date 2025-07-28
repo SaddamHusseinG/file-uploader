@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // Ensure node-fetch is installed: npm install node-fetch@2
 
 // --- Basic Setup ---
 const app = express();
@@ -44,13 +44,22 @@ app.use(session({
 
 // --- Helper Functions ---
 const sendToDiscord = async (message) => {
-  if (!DISCORD_WEBHOOK) return console.log('Discord webhook URL not set.');
+  if (!DISCORD_WEBHOOK) {
+    console.log('Discord webhook URL not set.');
+    return;
+  }
   try {
-    await fetch(DISCORD_WEBHOOK, {
+    if (typeof fetch !== 'function') {
+      throw new Error('fetch is not a function. Ensure node-fetch is installed and imported correctly.');
+    }
+    const response = await fetch(DISCORD_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: message })
     });
+    if (!response.ok) {
+      throw new Error(`Webhook request failed with status ${response.status}`);
+    }
   } catch (err) {
     console.error('Webhook failed:', err.message);
   }
@@ -224,17 +233,49 @@ app.post('/upload', upload.single('file'), (req, res) => {
   const copyScript = `
     <script>
       function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('copy-btn');
+            const originalText = btn.innerText;
+            btn.innerText = 'Copied!';
+            setTimeout(() => {
+              btn.innerText = originalText;
+            }, 2000);
+          }).catch(err => {
+            console.error('Clipboard API failed:', err);
+            fallbackCopyToClipboard(text);
+          });
+        } else {
+          // Fallback for older browsers
+          fallbackCopyToClipboard(text);
+        }
+      }
+
+      function fallbackCopyToClipboard(text) {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.style.position = 'fixed'; // Avoid scrolling to bottom
+          textArea.style.opacity = '0'; // Make it invisible
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textArea);
           const btn = document.getElementById('copy-btn');
           const originalText = btn.innerText;
-          btn.innerText = 'Copied!';
+          btn.innerText = successful ? 'Copied!' : 'Copy failed';
           setTimeout(() => {
             btn.innerText = originalText;
           }, 2000);
-        }).catch(err => {
-          console.error('Failed to copy: ', err);
-          alert('Could not copy link to clipboard.');
-        });
+          if (!successful) {
+            throw new Error('execCommand copy failed');
+          }
+        } catch (err) {
+          console.error('Fallback copy failed:', err);
+          alert('Could not copy link to clipboard. Please copy it manually.');
+        }
       }
     </script>
   `;
